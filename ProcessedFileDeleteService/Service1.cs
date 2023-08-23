@@ -78,6 +78,11 @@ namespace ProcessedFileDeleteService
 
                     DeleteFilesLocal(path, target);
                 }
+
+                #if !DEBUG
+                Thread.Sleep(1000 * 60 * 60 * 24);
+                #endif
+                
             }
         }
         private void DeleteFilesFTP(string path, string target, SSHClient sSHClient)
