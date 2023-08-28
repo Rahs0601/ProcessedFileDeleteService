@@ -21,9 +21,8 @@ namespace ProcessedFileDeleteService
         private readonly string FTPUserName = ConfigurationManager.AppSettings["FTPUserName"].ToString();
         private readonly string FTPPassword = ConfigurationManager.AppSettings["FTPPassword"].ToString();
         private readonly int Port = Convert.ToInt32(ConfigurationManager.AppSettings["FTPPort"].ToString());
+        private readonly int mins = Convert.ToInt32(ConfigurationManager.AppSettings["Minutes"].ToString());
         private readonly string targetExtension = "xml";
-        private readonly FtpWebResponse response;
-
         public Service1()
         {
             InitializeComponent();
@@ -75,14 +74,23 @@ namespace ProcessedFileDeleteService
                 }
                 else
                 {
-
-                    DeleteFilesLocal(path, target);
+                    //check if at least one folder exists after root folder in path string 
+                    bool folderexistis = path.Split('\\').Skip(1).Any();
+                    if (!folderexistis)
+                    {
+                        Logger.WriteErrorLog("No folder exists after root folder in path string");
+                        return;
+                    }
+                    else
+                    {
+                        DeleteFilesLocal(path, target);
+                    }
                 }
 
-                #if !DEBUG
-                Thread.Sleep(1000 * 60 * 60 * 24);
-                #endif
-                
+#if !DEBUG
+                Thread.Sleep(1000 * 60 * mins);
+#endif
+
             }
         }
         private void DeleteFilesFTP(string path, string target, SSHClient sSHClient)
@@ -152,18 +160,19 @@ namespace ProcessedFileDeleteService
                     if (last.Equals(target, StringComparison.OrdinalIgnoreCase))
                     {
                         int count = 0;
+                        int filecount = Directory.GetFiles(subDirectory).Count();
                         foreach (string file in Directory.GetFiles(subDirectory))
                         {
-                            if (file.EndsWith(targetExtension, StringComparison.OrdinalIgnoreCase) && (System.IO.File.GetCreationTime(file) < DateTime.Now.AddDays(days)))
+                            if (file.EndsWith(targetExtension, StringComparison.OrdinalIgnoreCase) && (File.GetLastWriteTime(file) < DateTime.Now.AddDays(days)))
                             {
-                                System.IO.File.Delete(file);
+                                File.Delete(file);
                                 count++;
                             }
                         }
                         if (count > 0)
                         {
-                            Logger.WriteDebugLog($"Number of files in the directory {subDirectory} is {Directory.GetFiles(subDirectory).Count()}");
-                            Logger.WriteDebugLog($"Deleted {count} files from {subDirectory}" + DateTime.Now.ToString());
+                            Logger.WriteDebugLog($"Number of files in the directory {subDirectory} is {filecount}");
+                            Logger.WriteDebugLog($"Deleted {count} files from {subDirectory}");
                         }
                     }
                 }
@@ -185,7 +194,7 @@ namespace ProcessedFileDeleteService
         protected override void OnStop()
         {
             runnning = false;
-            FolderDeleteServiceThread.Join();
+            FolderDeleteServiceThread.Abort();
             Thread.CurrentThread.Name = "MainThread";
             Logger.WriteDebugLog("Service Stopped");
         }
