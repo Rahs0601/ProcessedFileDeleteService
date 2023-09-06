@@ -2,7 +2,6 @@
 using System.Configuration;
 using System.IO;
 using System.Linq;
-using System.Net;
 using System.ServiceProcess;
 using System.Threading;
 
@@ -12,17 +11,18 @@ namespace ProcessedFileDeleteService
     {
         private bool runnning;
         private Thread FolderDeleteServiceThread;
+        private readonly string DeleteType = ConfigurationManager.AppSettings["DeleteType"].ToString();
         private readonly string appPath = Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location);
-        private readonly int days = Convert.ToInt32(ConfigurationManager.AppSettings["Days"].ToString()) * (-1);
+        private double days = Convert.ToDouble(ConfigurationManager.AppSettings["Days"].ToString()) * (-1);
+        private int Minutes = Convert.ToInt32(ConfigurationManager.AppSettings["Minutes"].ToString()) * (-1);
         private readonly string AccessType = ConfigurationManager.AppSettings["AccessType"].ToString();
         private readonly string path = ConfigurationManager.AppSettings["RootFolderPath"].ToString();
         private readonly string target = "processed";
         private readonly string FTPHostIp = ConfigurationManager.AppSettings["FTPHostIp"].ToString();
         private readonly string FTPUserName = ConfigurationManager.AppSettings["FTPUserName"].ToString();
         private readonly string FTPPassword = ConfigurationManager.AppSettings["FTPPassword"].ToString();
-        private readonly int Port = Convert.ToInt32(ConfigurationManager.AppSettings["FTPPort"].ToString());
-        private readonly int mins = Convert.ToInt32(ConfigurationManager.AppSettings["Minutes"].ToString());
         private readonly string targetExtension = "xml";
+        int ServiceRunTime = Convert.ToInt32(ConfigurationManager.AppSettings["ServiceRunTime"].ToString());
         public Service1()
         {
             InitializeComponent();
@@ -50,6 +50,12 @@ namespace ProcessedFileDeleteService
             //read from config file
             while (runnning)
             {
+                if (DeleteType.Equals("Minutes", StringComparison.OrdinalIgnoreCase))
+                {
+                    //Convert minutes to days
+                    days = Minutes / 1440;
+                }
+
                 if (AccessType.Equals("FTP", StringComparison.OrdinalIgnoreCase))
                 {
                     try
@@ -88,7 +94,7 @@ namespace ProcessedFileDeleteService
                 }
 
 #if !DEBUG
-                Thread.Sleep(1000 * 60 * mins);
+                Thread.Sleep(1000 * 60 * ServiceRunTime);
 #endif
 
             }
